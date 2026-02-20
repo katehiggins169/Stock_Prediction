@@ -1,81 +1,60 @@
 import streamlit as st
-import boto3
-import json
+import joblib
+import numpy as np
 
 # ----------------------------
 # App Title
 # ----------------------------
-st.title("AAPL 5-Day Return Predictor (SageMaker Deployment)")
+st.title("ML Stock Predictor (Local Deployment)")
 
 # ----------------------------
-# SageMaker Endpoint Settings
+# Load Local Model
 # ----------------------------
-ENDPOINT_NAME = "HW2-pipeline-endpoint-auto"   # MUST match deployed endpoint
-AWS_REGION = "us-east-1"
+# This replaces all the AWS/SageMaker code. 
+# Make sure 'stock_model.pkl' is uploaded to the 'Portfolio' folder in GitHub.
+@st.cache_resource
+def load_model():
+    return joblib.load('Portfolio/stock_model.pkl')
 
-runtime = boto3.client("sagemaker-runtime", region_name=AWS_REGION)
-
-# ----------------------------
-# Feature List (ORDER MATTERS)
-# ----------------------------
-FEATURES = [
-    'MSFT',
-    'SPY',
-    'DEXUSUK',
-    'SP500',
-    'VIXCLS',
-    'AAPL_mom_5',
-    'AAPL_mom_10',
-    'AAPL_ma10_gap',
-    'AAPL_ma20_gap',
-    'AAPL_hl_spread',
-    'AAPL_oc_return',
-    'is_quarter_end'
-]
-
-st.header("Enter Feature Values")
-
-inputs = {}
-
-for f in FEATURES:
-    if f == "is_quarter_end":
-        inputs[f] = float(st.selectbox(f, [0, 1], index=0))
-    else:
-        inputs[f] = float(st.number_input(f, value=0.0))
-
-row = [inputs[f] for f in FEATURES]
+model = load_model()
 
 # ----------------------------
-# Call SageMaker Endpoint
+# Feature List (Updated to match your screenshot)
 # ----------------------------
-def predict_endpoint(row):
-    body = json.dumps([row])
+st.header("Inputs")
 
-    response = runtime.invoke_endpoint(
-        EndpointName=ENDPOINT_NAME,
-        ContentType="application/json",
-        Body=body
-    )
+# Create two columns to match your visual layout
+col1, col2 = st.columns(2)
 
-    result = response["Body"].read().decode("utf-8")
+with col1:
+    googl = st.number_input("GOOGL", value=0.0)
+    dexjpus = st.number_input("DEXJPUS", value=0.0)
+    sp500 = st.number_input("SP500", value=0.0)
+    vixcls = st.number_input("VIXCLS", value=0.0)
 
-    try:
-        parsed = json.loads(result)
-        if isinstance(parsed, list):
-            return float(parsed[0])
-        return float(parsed)
-    except:
-        return float(result.strip().replace("[", "").replace("]", ""))
+with col2:
+    ibm = st.number_input("IBM", value=0.0)
+    dexusuk = st.number_input("DEXUSUK", value=0.0)
+    djia = st.number_input("DJIA", value=0.0)
 
 # ----------------------------
-# Prediction Button
+# Prediction Logic
 # ----------------------------
 if st.button("Run Prediction"):
-    prediction = predict_endpoint(row)
+    # Organize inputs into a 2D array for the model
+    # IMPORTANT: Ensure this order matches how you trained the model in Jupyter!
+    row = np.array([[googl, ibm, dexjpus, dexusuk, sp500, djia, vixcls]])
+    
+    try:
+        # Run local prediction
+        prediction = model.predict(row)[0]
 
-    st.success(f"Predicted 5-Day Forward Log Return: {prediction:.6f}")
+        st.success(f"Predicted Result: {prediction:.6f}")
 
-    if prediction > 0:
-        st.info("Model expects the stock to go UP 📈")
-    else:
-        st.info("Model expects the stock to go DOWN 📉")
+        if prediction > 0:
+            st.info("Model outlook: POSITIVE 📈")
+        else:
+            st.info("Model outlook: NEGATIVE 📉")
+            
+    except Exception as e:
+        st.error(f"Prediction Error: {e}")
