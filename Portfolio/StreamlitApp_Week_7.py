@@ -119,6 +119,7 @@ def display_explanation(input_df, session, aws_bucket):
     feature_names = full_pipeline[1:4].get_feature_names_out()
     X_test_transformed = pd.DataFrame(input_df_transformed, columns=feature_names)
     shap_values = explainer(input_df_transformed)
+    
     st.subheader("🔍 Decision Transparency (SHAP)")
     fig, ax = plt.subplots(figsize=(10, 4))
     shap.plots.waterfall(shap_values[0,:,0], max_display=10)
@@ -158,6 +159,7 @@ if submitted:
         display_explanation(input_df,session, aws_bucket)
     else:
         st.error(res)
+
 
 
 
