@@ -113,7 +113,7 @@ def display_explanation(input_df, session, aws_bucket):
     explainer_name = MODEL_INFO["explainer"]
     explainer = load_shap_explainer(session, aws_bucket, posixpath.join('explainer', explainer_name),os.path.join(tempfile.gettempdir(), explainer_name))
 
-    best_pipeline = load_pipelinei(session, aws_bucket, 'sklearn-pipline-deployment')
+    best_pipeline = load_pipeline(session, aws_bucket, 'sklearn-pipline-deployment')
     
     preprocessing_pipeline = Pipeline(steps=best_pipeline.steps[0:2])
     input_df_transformed = preprocessing_pipeline.transform(input_df)
