@@ -116,13 +116,13 @@ def display_explanation(input_df, session, aws_bucket):
 
 
     dataset = pd.read_csv(r'Portfolio/SP500Data.csv',index_col=0)
-    random = 'IBM'
+    random = 'AMZM'
     random_price = input_df[random]
     closest_date = (dataset[random] - float(random_price)).abs().idxmin()
 
     return_period = 5
 
-    X = np.log(dataset.drop(['MSFT'],axis=1)).diff(return_period)
+    X = np.log(dataset.drop(['AMZM'],axis=1)).diff(return_period)
     X = np.exp(X).cumsum()
     X.columns = [name + "_CR_Cum" for name in X.columns]
 
