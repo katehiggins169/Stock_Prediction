@@ -62,8 +62,8 @@ MODEL_INFO = {
         "explainer": 'explainer_pca.shap',
         "pipeline": 'finalized_pca_model.tar.gz',
         "keys": ["AMZN"], # match random values
-        "inputs": [{"name": k, "type": "number", "min": 0.0, "default": 100.0, "step": 10.0} for k in ["IBM"]]
-}
+        "inputs": [{"name": k, "type": "number", "min": 0.0, "default": 100.0, "step": 10.0} for k in ["AMZN"]]
+
 
 def load_pipeline(_session, bucket, key):
     s3_client = _session.client('s3')
