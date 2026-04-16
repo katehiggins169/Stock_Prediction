@@ -130,20 +130,24 @@ def display_explanation(input_df, session, aws_bucket):
     )
 
     # NO preprocessing anymore
-    shap_values = explainer(input_df)
+   # Compute SHAP values
+shap_values = explainer(input_df)
 
-    st.subheader("🔍 Decision Transparency (SHAP)")
+# Build a single-output explanation for the first row, BUY class (class 2)
+    single_exp = shap.Explanation(
+        values=shap_values.values[0, :, 2],
+        base_values=shap_values.base_values[0, 2],
+        data=input_df.iloc[0].values,
+        feature_names=input_df.columns.tolist()
+)
 
     fig = plt.figure(figsize=(10, 4))
-    
-    # Multi-class → pick class (2 = BUY)
-    shap.plots.waterfall(shap_values[0, 2], show=False)
-    
+    shap.plots.waterfall(single_exp, show=False)
     st.pyplot(fig)
 
     # Top feature
     top_feature = pd.Series(
-        shap_values[0, 2].values,
+        single_exp.values,
         index=input_df.columns
     ).abs().idxmax()
 
