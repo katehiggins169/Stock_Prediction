@@ -121,26 +121,33 @@ def call_model_api(input_df):
 # Local Explainability
 def display_explanation(input_df, session, aws_bucket):
     explainer_name = MODEL_INFO["explainer"]
-    explainer = load_shap_explainer(session, aws_bucket, posixpath.join('explainer', explainer_name),os.path.join(tempfile.gettempdir(), explainer_name))
     
-    best_pipeline = load_pipeline(session, aws_bucket, 'sklearn-pipeline-deployment')
-    preprocessing_pipeline = Pipeline(steps=best_pipeline.steps[:-2])
-    input_df_transformed = preprocessing_pipeline.transform(input_df)
-    feature_names = best_pipeline[:-2].get_feature_names_out()
-    input_df_transformed = pd.DataFrame(input_df_transformed, columns=feature_names)
-    shap_values = explainer(input_df_transformed)
-    
+    explainer = load_shap_explainer(
+        session,
+        aws_bucket,
+        posixpath.join('explainer', explainer_name),
+        os.path.join(tempfile.gettempdir(), explainer_name)
+    )
+
+    # NO preprocessing anymore
+    shap_values = explainer(input_df)
+
     st.subheader("🔍 Decision Transparency (SHAP)")
-    fig, ax = plt.subplots(figsize=(10, 4))
-    #shap.plots.waterfall(shap_values[0], max_display=10)
-    shap.plots.waterfall(shap_values[0, :, 0])
+
+    fig = plt.figure(figsize=(10, 4))
+    
+    # Multi-class → pick class (2 = BUY)
+    shap.plots.waterfall(shap_values[0, 2], show=False)
+    
     st.pyplot(fig)
-    # top feature 
-    # top_feature = pd.Series(shap_values[0].values, index=shap_values[0].feature_names).abs().idxmax()
-    top_feature = pd.Series(shap_values[0, :, 0].values, index=shap_values[0, :, 0].feature_names).abs().idxmax()
-    st.info(f"**Business Insight:** The most influential factor in this decision was **{top_feature}**.")
 
+    # Top feature
+    top_feature = pd.Series(
+        shap_values[0, 2].values,
+        index=input_df.columns
+    ).abs().idxmax()
 
+    st.info(f"**Business Insight:** The most influential factor was **{top_feature}**.")
 # Streamlit UI
 st.set_page_config(page_title="ML Deployment", layout="wide")
 st.title("👨‍💻 ML Deployment")
