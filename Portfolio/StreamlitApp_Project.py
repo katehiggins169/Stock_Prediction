@@ -68,8 +68,8 @@ sm_session = sagemaker.Session(boto_session=session)
 
 MODEL_INFO = {
     "endpoint"  : aws_endpoint,
-    "explainer" : "explainer_fraud.shap",
-    "pipeline"  : "fine_tuned_pipeline.tar.gz",
+    "explainer" : "fraud_shap_explainer.joblib",
+    "pipeline"  : "model.tar.gz",
     "keys"      : ['TransactionAmt','addr1','addr2'],
     "inputs"    : [{"name": k, "type": "number", "min": -1.0, "max": 1.0, "default": 0.0, "step": 0.01} for k in ['TransactionAmt','addr1','addr2']]
 }
@@ -87,7 +87,7 @@ def load_pipeline(_session, bucket, key):
     with tarfile.open(filename, "r:gz") as tar:
         tar.extractall(path=".")
         #joblib_file = [f for f in tar.getnames() if f.endswith('.joblib')][0]
-        joblib_file = [f for f in tar.getnames() if f.endswith('.pkl')][0]
+        joblib_file = [f for f in tar.getnames() if f.endswith('.joblib')][0]
     
 
     # Load the full pipeline
@@ -129,7 +129,7 @@ def display_explanation(input_df, session, aws_bucket):
     explainer_name = MODEL_INFO["explainer"]
     explainer = load_shap_explainer(session, aws_bucket, posixpath.join('explainer', explainer_name),os.path.join(tempfile.gettempdir(), explainer_name))
     
-    best_pipeline = load_pipeline(session, aws_bucket, 'sklearn-pipeline-deployment')
+    best_pipeline = load_pipeline(session, aws_bucket, 'fraud-model')
     preprocessing_pipeline = Pipeline(steps=best_pipeline.steps[:-3])
     input_df=pd.DataFrame(input_df)
     input_df_transformed = preprocessing_pipeline.transform(input_df)
