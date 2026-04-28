@@ -168,7 +168,7 @@ def display_explanation(input_df):
         best_pipeline = load_pipeline(session, aws_bucket, "fraud-model")
 
         # Use all steps before sampler/selector/to_dense/model if possible
-        preprocessing_steps = best_pipeline.steps[:-4]
+        preprocessing_pipeline = Pipeline(steps=best_pipeline.steps[:-2])
         preprocessing_pipeline = type(best_pipeline)(steps=preprocessing_steps)
 
         transformed = preprocessing_pipeline.transform(input_df)
