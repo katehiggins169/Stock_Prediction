@@ -66,11 +66,15 @@ MODEL_INFO = {
     "endpoint": aws_endpoint,
     "explainer": "fraud_shap_explainer.joblib",
     "pipeline": "model.tar.gz",
-    "keys": ["TransactionAmt", "addr1", "addr2"],
+
+    "keys": ["TransactionAmt", "card1", "D2", "D10", "C1"],
+
     "inputs": [
-        {"name": "TransactionAmt", "type": "number", "min": 0.0, "max": 10000.0, "default": 100.0, "step": 1.0},
-        {"name": "addr1", "type": "number", "min": 0.0, "max": 1000.0, "default": 300.0, "step": 1.0},
-        {"name": "addr2", "type": "number", "min": 0.0, "max": 1000.0, "default": 87.0, "step": 1.0}
+        {"name": "TransactionAmt", "label": "Transaction Amount ($)", "min": 0.0, "max": 10000.0, "default": 100.0, "step": 1.0},
+        {"name": "card1", "label": "Card ID (Anonymized)", "min": 0.0, "max": 20000.0, "default": 10000.0, "step": 1.0},
+        {"name": "D2", "label": "Time Since Last Transaction", "min": 0.0, "max": 10000.0, "default": 100.0, "step": 1.0},
+        {"name": "D10", "label": "Account Activity Timing", "min": 0.0, "max": 10000.0, "default": 100.0, "step": 1.0},
+        {"name": "C1", "label": "Transaction Frequency Pattern", "min": 0.0, "max": 5000.0, "default": 1.0, "step": 1.0},
     ]
 }
 
@@ -212,7 +216,7 @@ with st.form("pred_form"):
     for i, inp in enumerate(MODEL_INFO["inputs"]):
         with cols[i % 2]:
             user_inputs[inp["name"]] = st.number_input(
-                inp["name"],
+                inp["label"],   # ← THIS is the only change
                 min_value=inp["min"],
                 max_value=inp["max"],
                 value=inp["default"],
