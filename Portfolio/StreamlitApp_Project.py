@@ -175,7 +175,7 @@ def display_explanation(input_df):
 
         if hasattr(best_pipeline.named_steps.get("preprocess"), "get_feature_names_out"):
             try:
-                feature_names = best_pipeline.named_steps["preprocess"].get_feature_names_out()
+                ffeature_names = best_pipeline[:-1].get_feature_names_out()
             except:
                 feature_names = [f"feature_{i}" for i in range(transformed.shape[1])]
         else:
