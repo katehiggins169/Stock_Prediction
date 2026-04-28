@@ -30,7 +30,7 @@ st.title("Fraud Detection Prediction App")
 # -----------------------------
 # Load template row
 # -----------------------------
-file_path = "Portfolio/X_train_template.csv"
+file_path = "Portfolio/X_train.csv"
 
 dataset = pd.read_csv(file_path)
 dataset = dataset.loc[:, ~dataset.columns.str.contains("^Unnamed")]
