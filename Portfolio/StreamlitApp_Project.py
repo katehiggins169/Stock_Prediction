@@ -165,7 +165,6 @@ def display_explanation(input_df):
     try:
         best_pipeline = load_pipeline(session, aws_bucket, "fraud-model")
 
-        # Mirror exactly what your notebook does
         X_eng = best_pipeline.named_steps["feature_builder"].transform(input_df.copy())
         X_eng = best_pipeline.named_steps["drop_missing"].transform(X_eng)
         X_eng = best_pipeline.named_steps["drop_constant"].transform(X_eng)
@@ -175,22 +174,44 @@ def display_explanation(input_df):
         X_sel = best_pipeline.named_steps["selector"].transform(X_proc)
         X_sel = best_pipeline.named_steps["to_dense"].transform(X_sel)
 
-        # Build explainer fresh — no pickle, no version issues
+        # Get feature names if available
+        try:
+            feature_names = best_pipeline.named_steps["selector"].get_feature_names_out()
+        except:
+            try:
+                feature_names = best_pipeline.named_steps["preprocess"].get_feature_names_out()
+            except:
+                feature_names = None
+
         explainer = shap.TreeExplainer(best_pipeline.named_steps["model"])
         shap_values = explainer.shap_values(X_sel)
 
         st.subheader("Decision Transparency: SHAP Plot")
         plt.figure(figsize=(10, 4))
+
+        # Use force_plot for single predictions — much better than summary_plot for 1 row
         if isinstance(shap_values, list):
-            shap.summary_plot(shap_values[1], X_sel, show=False)
+            shap.plots._waterfall.waterfall_legacy(
+                explainer.expected_value[1],
+                shap_values[1][0],
+                feature_names=feature_names,
+                show=False,
+                max_display=10
+            )
         else:
-            shap.summary_plot(shap_values, X_sel, show=False)
+            shap.plots._waterfall.waterfall_legacy(
+                explainer.expected_value,
+                shap_values[0],
+                feature_names=feature_names,
+                show=False,
+                max_display=10
+            )
+
         st.pyplot(plt.gcf())
         plt.clf()
 
     except Exception as e:
         st.warning(f"SHAP explanation could not be displayed: {e}")
-
 # -----------------------------
 # Streamlit UI
 # -----------------------------
