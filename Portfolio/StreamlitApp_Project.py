@@ -1,10 +1,9 @@
 import os
 import warnings
-import json
 import tempfile
 import posixpath
+import tarfile
 
-import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
@@ -16,7 +15,6 @@ from sagemaker.serializers import JSONSerializer
 from sagemaker.deserializers import JSONDeserializer
 
 import joblib
-import tarfile
 import shap
 
 warnings.simplefilter("ignore")
@@ -32,8 +30,12 @@ st.title("Fraud Detection Prediction App")
 # -----------------------------
 file_path = "Portfolio/X_train.csv"
 
-dataset = pd.read_csv(file_path)
-dataset = dataset.loc[:, ~dataset.columns.str.contains("^Unnamed")]
+try:
+    dataset = pd.read_csv(file_path)
+    dataset = dataset.loc[:, ~dataset.columns.str.contains("^Unnamed")]
+except Exception as e:
+    st.error(f"Could not load X_train.csv: {e}")
+    st.stop()
 
 # -----------------------------
 # AWS secrets
@@ -84,17 +86,23 @@ MODEL_INFO = {
 @st.cache_resource
 def load_pipeline(_session, bucket, s3_folder):
     s3_client = _session.client("s3")
-    filename = MODEL_INFO["pipeline"]
+    local_filename = os.path.join(tempfile.gettempdir(), MODEL_INFO["pipeline"])
 
     s3_client.download_file(
         Bucket=bucket,
-        Key=f"{s3_folder}/{filename}",
-        Filename=filename
+        Key=f"{s3_folder}/{MODEL_INFO['pipeline']}",
+        Filename=local_filename
     )
 
-    with tarfile.open(filename, "r:gz") as tar:
-        tar.extractall(path=".")
-        joblib_files = [f for f in tar.getnames() if f.endswith(".joblib")]
+    extract_dir = tempfile.mkdtemp()
+
+    with tarfile.open(local_filename, "r:gz") as tar:
+        tar.extractall(path=extract_dir)
+        joblib_files = [
+            os.path.join(extract_dir, f)
+            for f in tar.getnames()
+            if f.endswith(".joblib")
+        ]
 
     if len(joblib_files) == 0:
         raise FileNotFoundError("No .joblib model file found inside model.tar.gz")
@@ -141,15 +149,13 @@ def call_model_api(input_df):
 
         pred_val = int(pred_val)
 
-        mapping = {
-            0: "Legitimate",
-            1: "Fraud"
-        }
-
-        return mapping.get(pred_val, str(pred_val)), 200
+        if pred_val == 1:
+            return "Fraud", 200
+        else:
+            return "Legitimate", 200
 
     except Exception as e:
-        return f"Error: {str(e)}", 500
+        return f"Prediction error: {str(e)}", 500
 
 # -----------------------------
 # SHAP explanation
@@ -167,39 +173,25 @@ def display_explanation(input_df):
 
         best_pipeline = load_pipeline(session, aws_bucket, "fraud-model")
 
-        # Use all steps before sampler/selector/to_dense/model if possible
-        preprocessing_pipeline = Pipeline(steps=best_pipeline.steps[:-2])
-        preprocessing_pipeline = type(best_pipeline)(steps=preprocessing_steps)
+        # Try to transform input using pipeline steps before the final model
+        try:
+            transformed = best_pipeline[:-1].transform(input_df)
+        except:
+            transformed = input_df[MODEL_INFO["keys"]]
 
-        transformed = preprocessing_pipeline.transform(input_df)
+        shap_values = explainer.shap_values(transformed)
 
-        if hasattr(best_pipeline.named_steps.get("preprocess"), "get_feature_names_out"):
-            try:
-                ffeature_names = best_pipeline[:-1].get_feature_names_out()
-            except:
-                feature_names = [f"feature_{i}" for i in range(transformed.shape[1])]
-        else:
-            feature_names = [f"feature_{i}" for i in range(transformed.shape[1])]
+        st.subheader("Decision Transparency: SHAP Plot")
 
-        selected = best_pipeline.named_steps["selector"].transform(
-            best_pipeline.named_steps["preprocess"].transform(transformed)
-        )
-
-        if "to_dense" in best_pipeline.named_steps:
-            selected = best_pipeline.named_steps["to_dense"].transform(selected)
-
-        shap_values = explainer.shap_values(selected)
-
-        st.subheader("Decision Transparency: SHAP")
-
-        fig = plt.figure(figsize=(10, 4))
+        plt.figure(figsize=(10, 4))
 
         if isinstance(shap_values, list):
-            shap.summary_plot(shap_values[1], selected, show=False)
+            shap.summary_plot(shap_values[1], transformed, show=False)
         else:
-            shap.summary_plot(shap_values, selected, show=False)
+            shap.summary_plot(shap_values, transformed, show=False)
 
-        st.pyplot(fig)
+        st.pyplot(plt.gcf())
+        plt.clf()
 
     except Exception as e:
         st.warning(f"SHAP explanation could not be displayed: {e}")
@@ -216,7 +208,7 @@ with st.form("pred_form"):
     for i, inp in enumerate(MODEL_INFO["inputs"]):
         with cols[i % 2]:
             user_inputs[inp["name"]] = st.number_input(
-                inp["label"],   # ← THIS is the only change
+                inp["label"],
                 min_value=inp["min"],
                 max_value=inp["max"],
                 value=inp["default"],
@@ -238,10 +230,12 @@ if submitted:
     res, status = call_model_api(input_row)
 
     if status == 200:
+        st.markdown(f"## Final Prediction: {res}")
+
         if res == "Fraud":
-            st.error(f"Prediction: {res}")
+            st.error("⚠️ Prediction: Fraud")
         else:
-            st.success(f"Prediction: {res}")
+            st.success("✅ Prediction: Legitimate")
 
         st.write("Inputs sent to model:")
         st.dataframe(input_row[MODEL_INFO["keys"]])
