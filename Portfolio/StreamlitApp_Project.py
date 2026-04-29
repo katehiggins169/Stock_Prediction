@@ -186,8 +186,19 @@ def display_explanation(input_df):
         shap_values = explainer.shap_values(X_sel)
 
         import numpy as np
-        st.write("expected_value:", explainer.expected_value)
-        st.write("shap_values shape:", np.array(shap_values).shape)
+        st.subheader("Decision Transparency: SHAP Plot")
+        plt.figure(figsize=(10, 4))
+
+        shap.plots._waterfall.waterfall_legacy(
+            explainer.expected_value[1],
+            shap_values[0, :, 1],      # row 0, all features, fraud class
+            feature_names=feature_names,
+            show=False,
+            max_display=10
+        )
+
+        st.pyplot(plt.gcf())
+        plt.clf()
 
     except Exception as e:
         st.warning(f"SHAP explanation could not be displayed: {e}")
