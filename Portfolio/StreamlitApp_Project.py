@@ -104,11 +104,14 @@ def load_pipeline(_session, bucket, s3_folder):
             if f.endswith(".joblib")
         ]
 
+    # ADD THESE TWO LINES
+    if extract_dir not in sys.path:
+        sys.path.insert(0, extract_dir)
+
     if len(joblib_files) == 0:
         raise FileNotFoundError("No .joblib model file found inside model.tar.gz")
 
     return joblib.load(joblib_files[0])
-
 # -----------------------------
 # Load SHAP explainer from S3
 # -----------------------------
