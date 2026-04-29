@@ -159,34 +159,28 @@ def call_model_api(input_df):
 # -----------------------------
 def display_explanation(input_df):
     try:
-        explainer_name = MODEL_INFO["explainer"]
-
-        explainer = load_shap_explainer(
-            session,
-            aws_bucket,
-            posixpath.join("explainer", explainer_name),
-            os.path.join(tempfile.gettempdir(), explainer_name)
-        )
-
         best_pipeline = load_pipeline(session, aws_bucket, "fraud-model")
 
-        # Try to transform input using pipeline steps before the final model
-        try:
-            transformed = best_pipeline[:-1].transform(input_df)
-        except:
-            transformed = input_df[MODEL_INFO["keys"]]
+        # Mirror exactly what your notebook does
+        X_eng = best_pipeline.named_steps["feature_builder"].transform(input_df.copy())
+        X_eng = best_pipeline.named_steps["drop_missing"].transform(X_eng)
+        X_eng = best_pipeline.named_steps["drop_constant"].transform(X_eng)
+        X_eng = best_pipeline.named_steps["group_rare"].transform(X_eng)
+        X_eng = best_pipeline.named_steps["drop_high_card"].transform(X_eng)
+        X_proc = best_pipeline.named_steps["preprocess"].transform(X_eng)
+        X_sel = best_pipeline.named_steps["selector"].transform(X_proc)
+        X_sel = best_pipeline.named_steps["to_dense"].transform(X_sel)
 
-        shap_values = explainer.shap_values(transformed)
+        # Build explainer fresh — no pickle, no version issues
+        explainer = shap.TreeExplainer(best_pipeline.named_steps["model"])
+        shap_values = explainer.shap_values(X_sel)
 
         st.subheader("Decision Transparency: SHAP Plot")
-
         plt.figure(figsize=(10, 4))
-
         if isinstance(shap_values, list):
-            shap.summary_plot(shap_values[1], transformed, show=False)
+            shap.summary_plot(shap_values[1], X_sel, show=False)
         else:
-            shap.summary_plot(shap_values, transformed, show=False)
-
+            shap.summary_plot(shap_values, X_sel, show=False)
         st.pyplot(plt.gcf())
         plt.clf()
 
