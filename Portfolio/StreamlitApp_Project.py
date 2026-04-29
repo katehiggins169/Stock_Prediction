@@ -189,23 +189,13 @@ def display_explanation(input_df):
         st.subheader("Decision Transparency: SHAP Plot")
         plt.figure(figsize=(10, 4))
 
-        # Use force_plot for single predictions — much better than summary_plot for 1 row
-        if isinstance(shap_values, list):
-            shap.plots._waterfall.waterfall_legacy(
-                explainer.expected_value[1],
-                shap_values[1][0],
-                feature_names=feature_names,
-                show=False,
-                max_display=10
-            )
-        else:
-            shap.plots._waterfall.waterfall_legacy(
-                explainer.expected_value,
-                shap_values[0],
-                feature_names=feature_names,
-                show=False,
-                max_display=10
-            )
+        shap.plots._waterfall.waterfall_legacy(
+            explainer.expected_value[1],
+            shap_values[1][0],
+            feature_names=feature_names,
+            show=False,
+            max_display=10
+        )
 
         st.pyplot(plt.gcf())
         plt.clf()
