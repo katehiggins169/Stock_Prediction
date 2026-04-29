@@ -129,25 +129,22 @@ def load_shap_explainer(_session, bucket, s3_key, local_path):
 # Call SageMaker endpoint
 # -----------------------------
 def call_model_api(input_df):
-    predictor = Predictor(
-        endpoint_name=MODEL_INFO["endpoint"],
-        sagemaker_session=sm_session,
-        serializer=JSONSerializer(),
-        deserializer=JSONDeserializer()
-    )
+    runtime = session.client("sagemaker-runtime")
 
     try:
-        payload = input_df.to_dict(orient="records")
-        raw_pred = predictor.predict(payload)
+        payload = input_df.to_csv(index=False)
 
-        if isinstance(raw_pred, list):
-            pred_val = raw_pred[0]
-        elif isinstance(raw_pred, dict) and "predictions" in raw_pred:
-            pred_val = raw_pred["predictions"][0]
-        else:
-            pred_val = raw_pred
+        response = runtime.invoke_endpoint(
+            EndpointName=MODEL_INFO["endpoint"],
+            ContentType="text/csv",
+            Body=payload
+        )
 
-        pred_val = int(pred_val)
+        result = response["Body"].read().decode("utf-8").strip()
+
+        # clean result
+        result = result.replace("[", "").replace("]", "").replace('"', "").strip()
+        pred_val = int(float(result))
 
         if pred_val == 1:
             return "Fraud", 200
