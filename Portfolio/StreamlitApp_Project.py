@@ -174,7 +174,6 @@ def display_explanation(input_df):
         X_sel = best_pipeline.named_steps["selector"].transform(X_proc)
         X_sel = best_pipeline.named_steps["to_dense"].transform(X_sel)
 
-        # Get feature names if available
         try:
             feature_names = best_pipeline.named_steps["selector"].get_feature_names_out()
         except:
@@ -186,19 +185,9 @@ def display_explanation(input_df):
         explainer = shap.TreeExplainer(best_pipeline.named_steps["model"])
         shap_values = explainer.shap_values(X_sel)
 
-        st.subheader("Decision Transparency: SHAP Plot")
-        plt.figure(figsize=(10, 4))
-
-        shap.plots._waterfall.waterfall_legacy(
-            explainer.expected_value[0],
-            shap_values[0],
-            feature_names=feature_names,
-            show=False,
-            max_display=10
-        )
-
-        st.pyplot(plt.gcf())
-        plt.clf()
+        import numpy as np
+        st.write("expected_value:", explainer.expected_value)
+        st.write("shap_values shape:", np.array(shap_values).shape)
 
     except Exception as e:
         st.warning(f"SHAP explanation could not be displayed: {e}")
