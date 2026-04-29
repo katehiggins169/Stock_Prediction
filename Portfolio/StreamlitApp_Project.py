@@ -190,8 +190,8 @@ def display_explanation(input_df):
         plt.figure(figsize=(10, 4))
 
         shap.plots._waterfall.waterfall_legacy(
-            explainer.expected_value[1],
-            shap_values[1][0],
+            explainer.expected_value,
+            shap_values[0],
             feature_names=feature_names,
             show=False,
             max_display=10
